@@ -1,0 +1,3 @@
+-Run this command in terminal or command prompt or powershell
+
+npm install @openzeppelin/contracts

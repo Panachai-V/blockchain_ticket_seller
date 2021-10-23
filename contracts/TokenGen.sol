@@ -2,11 +2,16 @@
 pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-//import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-//import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// Module that may import in Future
+
+//import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";          //การลบตั๋วทิ้ง
+//import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Owner, Other
+
+
+//--------------------------------CONTRACT VERSION 0.1.2------------------------------------------------------//
 contract MinimalERC721 is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdTracker;
@@ -24,11 +29,6 @@ contract MinimalERC721 is ERC721, Ownable {
 
     mapping (uint => ticketData) tk_dat;
 
-    function mint(address _to) public onlyOwner {
-        super._mint(_to, _tokenIdTracker.current());
-        _tokenIdTracker.increment();        
-    }
-
 
     // สร้างตั๋วโดยใช้ address คนขาย
     function tokenMake(address _to,string memory name,string memory detail) public onlyOwner {
@@ -42,12 +42,14 @@ contract MinimalERC721 is ERC721, Ownable {
         _tokenIdTracker.increment();        
     }
 
+    // โอนตั๋วโดยใช้ address คนขาย
     function transferFrom(address from,address to, uint256 tokenId) public virtual override onlyOwner{
         super.transferFrom(from, to ,tokenId);
         ticketData storage tkData = tk_dat[tokenId];
         tkData.ticketOwner = to;
     }
 
+    // Function get ค่าต่างในตั๋ว
     function getPrice(uint tokenId) public view returns(uint) {
         ticketData storage tkData = tk_dat[tokenId];
         return tkData.price;
@@ -73,13 +75,18 @@ contract MinimalERC721 is ERC721, Ownable {
         return tkData.ticketMaker;
     }
 
-    
-
+    // แก้ไขตั๋ว 
+    /* Still has a lot of improvement to do in this function may need to edit your contract if structure of this function
+    change
+    */
+    function editTicket(uint tokenId,string memory rename,string memory re_detail) public onlyOwner returns(string memory) {
+        ticketData storage tkData = tk_dat[tokenId];
+        tkData.ticketName = rename;
+        tkData.ticketDetail = re_detail;
+        string memory message = "update success \nName & Detail has been Updated";
+        return message;
+    }
 }
-
-
-
-
 
 
 /* contract DigitalTicket is ERC721, ERC721Burnable, AccessControl {

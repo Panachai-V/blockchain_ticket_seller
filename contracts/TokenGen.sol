@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Owner, Other
 
 
-//--------------------------------CONTRACT VERSION 0.1.2------------------------------------------------------//
+//--------------------------------CONTRACT VERSION 0.2.2------------------------------------------------------//
 contract MinimalERC721 is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdTracker;
@@ -31,7 +31,13 @@ contract MinimalERC721 is ERC721, Ownable {
 
 
     // สร้างตั๋วโดยใช้ address คนขาย
-    function tokenMake(address _to,string memory name,string memory detail) public onlyOwner {
+    function tokenMake(address _to,string memory name,string memory detail) public onlyOwner returns(bool ticketMake) {
+        
+        (bool tk_exist,) = getIDByNameAndDetail(name, detail);      //check if ticket has already made
+        if (tk_exist) {
+            ticketMake = false;
+            revert("This ticket has already made");
+        }
         super._mint(_to, _tokenIdTracker.current());
         uint now_ID = _tokenIdTracker.current();
         ticketData storage tkData = tk_dat[now_ID];
@@ -39,7 +45,8 @@ contract MinimalERC721 is ERC721, Ownable {
         tkData.ticketName = name;
         tkData.ticketMaker = _to;
         tkData.ticketOwner = _to;
-        _tokenIdTracker.increment();        
+        _tokenIdTracker.increment();
+        ticketMake = true;        
     }
 
     // โอนตั๋วโดยใช้ address คนขาย
@@ -85,6 +92,21 @@ contract MinimalERC721 is ERC721, Ownable {
         tkData.ticketDetail = re_detail;
         string memory message = "update success \nName & Detail has been Updated";
         return message;
+    }
+
+    function getIDByNameAndDetail(string memory t_name,string memory t_detail) public view returns(bool tkExist,uint ticketID_Number) {
+
+        for(uint i = 0; i <= _tokenIdTracker.current(); i++){
+            ticketData storage tkData = tk_dat[i];
+            bool a = (keccak256(abi.encodePacked(tkData.ticketName)) == keccak256(abi.encodePacked(t_name)));      //name & detail compare
+            bool b = (keccak256(abi.encodePacked(tkData.ticketDetail)) == keccak256(abi.encodePacked(t_detail))); //Comparing string but we can't comparedirectly
+            
+            if ( a && b )           // if ticket that has these detail exist
+            {                       // return ticket ID and said it exist
+                return (true,i);    // solidity can't return multiple value type in 1 variales so It need to return boolean and ID  
+            }
+        }
+        return (false,0);           // return 0 and said it not exist (false)
     }
 }
 

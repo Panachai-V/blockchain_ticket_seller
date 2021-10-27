@@ -11,8 +11,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Owner, Other
 
 
-//--------------------------------CONTRACT VERSION 0.2.2------------------------------------------------------//
-contract MinimalERC721 is ERC721, Ownable {
+//--------------------------------CONTRACT VERSION 0.2.4------------------------------------------------------//
+contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdTracker;
     constructor() ERC721("Minimal", "MIN") {}
@@ -22,7 +22,6 @@ contract MinimalERC721 is ERC721, Ownable {
      struct ticketData {
         string ticketName;              // ชื่อตั๋ว
         string ticketDetail;            // รายละเอียดตั๋ว
-        address ticketOwner;            // address เจ้าของ
         address ticketMaker;            // address คนสร้าง
         uint price;
     }
@@ -31,7 +30,7 @@ contract MinimalERC721 is ERC721, Ownable {
 
 
     // สร้างตั๋วโดยใช้ address คนขาย
-    function tokenMake(address _to,string memory name,string memory detail) public onlyOwner returns(bool ticketMake) {
+    function ticketMake(address _to,string memory name,string memory detail) public onlyOwner returns(bool ticketMake) {
         
         (bool tk_exist,) = getIDByNameAndDetail(name, detail);      //check if ticket has already made
         if (tk_exist) {
@@ -44,17 +43,15 @@ contract MinimalERC721 is ERC721, Ownable {
         tkData.ticketDetail = detail;
         tkData.ticketName = name;
         tkData.ticketMaker = _to;
-        tkData.ticketOwner = _to;
         _tokenIdTracker.increment();
         ticketMake = true;        
     }
 
     // โอนตั๋วโดยใช้ address คนขาย
-    function transferFrom(address from,address to, uint256 tokenId) public virtual override onlyOwner{
+    /* function transferFrom(address from,address to, uint256 tokenId) public virtual override onlyOwner{
         super.transferFrom(from, to ,tokenId);
         ticketData storage tkData = tk_dat[tokenId];
-        tkData.ticketOwner = to;
-    }
+    } */
 
     // Function get ค่าต่างในตั๋ว
     function getPrice(uint tokenId) public view returns(uint) {
@@ -72,10 +69,11 @@ contract MinimalERC721 is ERC721, Ownable {
         return tkData.ticketDetail;
     }
 
-    function getOwnerAddress(uint tokenId) public view returns(address) {
-        ticketData storage tkData = tk_dat[tokenId];
-        return tkData.ticketOwner;
-    }
+    // ยกเลิก Function นี้ ให้ใช้ ownerOf(uint tokenId) แทน
+    // function getOwnerAddress(uint tokenId) public view returns(address) {
+    //     ticketData storage tkData = tk_dat[tokenId];
+    //     return tkData.ticketOwner;
+    // } 
 
     function getMakerAddress(uint tokenId) public view returns(address) {
         ticketData storage tkData = tk_dat[tokenId];

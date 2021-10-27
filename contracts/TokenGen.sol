@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Owner, Other
 
 
-//--------------------------------CONTRACT VERSION 0.2.4------------------------------------------------------//
+//--------------------------------CONTRACT VERSION 0.2.6------------------------------------------------------//
 contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdTracker;
@@ -26,15 +26,15 @@ contract TicketCtrl is ERC721, Ownable {
         uint price;
     }
 
+    // ผูกข้อมูลเข้ากับ ตั๋วแต่ละใบ (เรียกใช้โดย เลข ID ตั๋ว)
     mapping (uint => ticketData) tk_dat;
 
 
     // สร้างตั๋วโดยใช้ address คนขาย
-    function ticketMake(address _to,string memory name,string memory detail) public onlyOwner returns(bool ticketMake) {
+    function ticketMake(address _to,string memory name,string memory detail,uint t_price) public onlyOwner {
         
         (bool tk_exist,) = getIDByNameAndDetail(name, detail);      //check if ticket has already made
         if (tk_exist) {
-            ticketMake = false;
             revert("This ticket has already made");
         }
         super._mint(_to, _tokenIdTracker.current());
@@ -43,9 +43,11 @@ contract TicketCtrl is ERC721, Ownable {
         tkData.ticketDetail = detail;
         tkData.ticketName = name;
         tkData.ticketMaker = _to;
+        tkData.price = t_price;
         _tokenIdTracker.increment();
-        ticketMake = true;        
     }
+
+    
 
     // โอนตั๋วโดยใช้ address คนขาย
     /* function transferFrom(address from,address to, uint256 tokenId) public virtual override onlyOwner{
@@ -58,6 +60,7 @@ contract TicketCtrl is ERC721, Ownable {
         ticketData storage tkData = tk_dat[tokenId];
         return tkData.price;
     }
+
 
     function getName(uint tokenId) public view returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
@@ -86,9 +89,24 @@ contract TicketCtrl is ERC721, Ownable {
     */
     function editTicket(uint tokenId,string memory rename,string memory re_detail) public onlyOwner returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
+        address nowOwner = ownerOf(tokenId);
+        if (tkData.ticketMaker != nowOwner){
+            revert("you are not Admin/Ticket Maker");
+        }
         tkData.ticketName = rename;
         tkData.ticketDetail = re_detail;
         string memory message = "update success \nName & Detail has been Updated";
+        return message;
+    }
+
+    function editTkPrice(uint tokenId,uint re_price) public onlyOwner returns(string memory) {
+        ticketData storage tkData = tk_dat[tokenId];
+        address nowOwner = ownerOf(tokenId);
+        if (tkData.ticketMaker != nowOwner){
+            revert("you are not Admin/Ticket Maker");
+        }
+        tkData.price = re_price;
+        string memory message = "update success \nPrice has been Updated";
         return message;
     }
 

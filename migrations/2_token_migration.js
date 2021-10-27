@@ -1,5 +1,5 @@
-const TokenGen = artifacts.require("MinimalERC721");
+const TicketGen = artifacts.require("TicketCtrl");
 
 module.exports = function (deployer) {
-  deployer.deploy(TokenGen);
+  deployer.deploy(TicketGen);
 };

@@ -89,10 +89,6 @@ contract TicketCtrl is ERC721, Ownable {
     */
     function editTicket(uint tokenId,string memory rename,string memory re_detail) public onlyOwner returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
-        address nowOwner = ownerOf(tokenId);
-        if (tkData.ticketMaker != nowOwner){
-            revert("you are not Admin/Ticket Maker");
-        }
         tkData.ticketName = rename;
         tkData.ticketDetail = re_detail;
         string memory message = "update success \nName & Detail has been Updated";
@@ -101,10 +97,6 @@ contract TicketCtrl is ERC721, Ownable {
 
     function editTkPrice(uint tokenId,uint re_price) public onlyOwner returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
-        address nowOwner = ownerOf(tokenId);
-        if (tkData.ticketMaker != nowOwner){
-            revert("you are not Admin/Ticket Maker");
-        }
         tkData.price = re_price;
         string memory message = "update success \nPrice has been Updated";
         return message;

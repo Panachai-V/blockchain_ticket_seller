@@ -8,29 +8,27 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 // Module that may import in Future
 
 //import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";          //การลบตั๋วทิ้ง
-//import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Owner, Other
+//import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other
 
 
-//--------------------------------CONTRACT VERSION 0.2.6------------------------------------------------------//
+//--------------------------------CONTRACT VERSION 0.2.7------------------------------------------------------//
 contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdTracker;
-    constructor() ERC721("Minimal", "MIN") {}
-    string makername = "Default";
+    constructor() ERC721("TicketAdmin", "TK_A") {}
+    //string makername = "TicketAdmin";
 
     //ตัวแปรสำหรับเก็บข้อมูลของตั๋ว 
      struct ticketData {
         string ticketName;              // ชื่อตั๋ว
         string ticketDetail;            // รายละเอียดตั๋ว
         address ticketMaker;            // address คนสร้าง
-        uint price;
+        uint price;                     // ราคาตั๋ว
     }
 
     // ผูกข้อมูลเข้ากับ ตั๋วแต่ละใบ (เรียกใช้โดย เลข ID ตั๋ว)
     mapping (uint => ticketData) tk_dat;
 
-
-    // สร้างตั๋วโดยใช้ address คนขาย
     function ticketMake(address _to,string memory name,string memory detail,uint t_price) public onlyOwner {
         
         (bool tk_exist,) = getIDByNameAndDetail(name, detail);      //check if ticket has already made
@@ -42,25 +40,25 @@ contract TicketCtrl is ERC721, Ownable {
         ticketData storage tkData = tk_dat[now_ID];
         tkData.ticketDetail = detail;
         tkData.ticketName = name;
-        tkData.ticketMaker = _to;
+        tkData.ticketMaker = msg.sender;
         tkData.price = t_price;
         _tokenIdTracker.increment();
     }
 
     
 
-    // โอนตั๋วโดยใช้ address คนขาย
+    // โอนตั๋วโดยใช้ address คนขาย (ยกเลิกครับ)
     /* function transferFrom(address from,address to, uint256 tokenId) public virtual override onlyOwner{
         super.transferFrom(from, to ,tokenId);
         ticketData storage tkData = tk_dat[tokenId];
     } */
 
-    // Function get ค่าต่างในตั๋ว
-    function getPrice(uint tokenId) public view returns(uint) {
+    // Function get ค่าต่างๆในตั๋ว (ป้อน ID ตั๋ว)
+
+    function getPrice(uint tokenId) public view returns(uint price_num) {
         ticketData storage tkData = tk_dat[tokenId];
         return tkData.price;
     }
-
 
     function getName(uint tokenId) public view returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
@@ -83,10 +81,7 @@ contract TicketCtrl is ERC721, Ownable {
         return tkData.ticketMaker;
     }
 
-    // แก้ไขตั๋ว 
-    /* Still has a lot of improvement to do in this function may need to edit your contract if structure of this function
-    change
-    */
+    // แก้ไขตั๋ว
     function editTicket(uint tokenId,string memory rename,string memory re_detail) public onlyOwner returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
         tkData.ticketName = rename;
@@ -102,12 +97,15 @@ contract TicketCtrl is ERC721, Ownable {
         return message;
     }
 
+    // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา
+    // ค่าที่ Return จะเป็น tuple โดยที่ ค่าแรก จะบอกว่ามีตั๋วที่มีข้อมูลตรงกับที่กรอกอยู่ในระบบ
+    // ส่วนอีกค่า จะเป็นเลข ID ของตั๋ว
     function getIDByNameAndDetail(string memory t_name,string memory t_detail) public view returns(bool tkExist,uint ticketID_Number) {
 
         for(uint i = 0; i <= _tokenIdTracker.current(); i++){
             ticketData storage tkData = tk_dat[i];
-            bool a = (keccak256(abi.encodePacked(tkData.ticketName)) == keccak256(abi.encodePacked(t_name)));      //name & detail compare
-            bool b = (keccak256(abi.encodePacked(tkData.ticketDetail)) == keccak256(abi.encodePacked(t_detail))); //Comparing string but we can't comparedirectly
+            bool a = (keccak256(abi.encodePacked(tkData.ticketName)) == keccak256(abi.encodePacked(t_name)));     //name & detail compare
+            bool b = (keccak256(abi.encodePacked(tkData.ticketDetail)) == keccak256(abi.encodePacked(t_detail))); //Comparing string but we can't compare them directly
             
             if ( a && b )           // if ticket that has these detail exist
             {                       // return ticket ID and said it exist
@@ -116,45 +114,34 @@ contract TicketCtrl is ERC721, Ownable {
         }
         return (false,0);           // return 0 and said it not exist (false)
     }
+
+    // -------------------------------------EXTEND FUNCTION ZONE----------------------------------------//
+    function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint j = _i;
+        uint len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint k = len;
+        while (_i != 0) {
+            k = k-1;
+            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
+            bytes1 b1 = bytes1(temp);
+            bstr[k] = b1;
+            _i /= 10;
+        }
+        return string(bstr);
+    }
+
+    function getPriceString(uint tokenId) public view returns(string memory num_str) {
+        ticketData storage tkData = tk_dat[tokenId];
+        uint ticketPrice = tkData.price;
+        string memory str_num = uint2str(ticketPrice); 
+        return str_num;
+    }
 }
-
-
-/* contract DigitalTicket is ERC721, ERC721Burnable, AccessControl {
-    using Counters for Counters.Counter;
-
-    //ตัวแปรสำหรับเก็บข้อมูลของตั๋ว 
-    struct metadata {
-        string ticketName;              // ชื่อตั๋ว
-        string ticketDetail;            // รายละเอียดตั๋ว
-    }
-
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    Counters.Counter private _tokenIdCounter;
-
-    constructor() ERC721("DigitalTicket", "MTK") {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(MINTER_ROLE, msg.sender);
-        
-    }
-
-    function safeMint(address to) public onlyRole(MINTER_ROLE) {
-        _safeMint(to, _tokenIdCounter.current());
-        _tokenIdCounter.increment();
-    }
-
-    // The following functions are overrides required by Solidity.
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, AccessControl)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
-    }
-
-    //function addPermissionToBuyer(Address buyer) {
-
-    //}
-
-} */

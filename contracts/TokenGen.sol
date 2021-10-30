@@ -11,7 +11,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other
 
 
-//--------------------------------CONTRACT VERSION 0.2.7------------------------------------------------------//
+//--------------------------------CONTRACT VERSION 0.3.1------------------------------------------------------//
+//-------------------------------เปลี่ยนโครงสร้าง Str------------------------------------------------------------//
 contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdTracker;
@@ -20,29 +21,41 @@ contract TicketCtrl is ERC721, Ownable {
 
     //ตัวแปรสำหรับเก็บข้อมูลของตั๋ว 
      struct ticketData {
-        string ticketName;              // ชื่อตั๋ว
-        string ticketDetail;            // รายละเอียดตั๋ว
+        string concertName;             // ชื่อตั๋ว
+        string ticketSeat;              // รายละเอียดตั๋ว ที่นั่ง
+        string eventDate;               // รายละเอียดตั๋ว เก็บค่าวันที่ , ยังมี ข้อบกพร่อง อยู่
         address ticketMaker;            // address คนสร้าง
         uint price;                     // ราคาตั๋ว
+        bool isUsed;                    // สถานะการใช้งานตั๋ว
     }
 
     // ผูกข้อมูลเข้ากับ ตั๋วแต่ละใบ (เรียกใช้โดย เลข ID ตั๋ว)
     mapping (uint => ticketData) tk_dat;
 
-    function ticketMake(address _to,string memory name,string memory detail,uint t_price) public onlyOwner {
+    function ticketMake(
+        address _to,
+        string memory name,
+        string memory seat_dt,
+        string memory t_date,
+        uint t_price) 
+        public onlyOwner 
+        returns (uint t_no) {
         
-        (bool tk_exist,) = getIDByNameAndDetail(name, detail);      //check if ticket has already made
+        (bool tk_exist,) = getIDByNameAndDetail(name, seat_dt,t_date);      //check if ticket has already made
         if (tk_exist) {
             revert("This ticket has already made");
         }
         super._mint(_to, _tokenIdTracker.current());
         uint now_ID = _tokenIdTracker.current();
         ticketData storage tkData = tk_dat[now_ID];
-        tkData.ticketDetail = detail;
-        tkData.ticketName = name;
+        tkData.ticketSeat = seat_dt;
+        tkData.concertName = name;
         tkData.ticketMaker = msg.sender;
         tkData.price = t_price;
+        tkData.eventDate = t_date;
+        tkData.isUsed = false;
         _tokenIdTracker.increment();
+        return now_ID;
     }
 
     
@@ -62,12 +75,17 @@ contract TicketCtrl is ERC721, Ownable {
 
     function getName(uint tokenId) public view returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
-        return tkData.ticketName;
+        return tkData.concertName;
     }
 
-    function getDetail(uint tokenId) public view returns(string memory) {
+    function getDetail(uint tokenId) public view returns(string memory seat,string memory event_date) {
         ticketData storage tkData = tk_dat[tokenId];
-        return tkData.ticketDetail;
+        return (tkData.ticketSeat,tkData.eventDate);
+    }
+
+    function getUsedStatus(uint tokenId) public view returns(bool) {
+        ticketData storage tkData = tk_dat[tokenId];
+        return tkData.isUsed;
     }
 
     // ยกเลิก Function นี้ ให้ใช้ ownerOf(uint tokenId) แทน
@@ -84,8 +102,8 @@ contract TicketCtrl is ERC721, Ownable {
     // แก้ไขตั๋ว
     function editTicket(uint tokenId,string memory rename,string memory re_detail) public onlyOwner returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
-        tkData.ticketName = rename;
-        tkData.ticketDetail = re_detail;
+        tkData.concertName = rename;
+        tkData.ticketSeat = re_detail;
         string memory message = "update success \nName & Detail has been Updated";
         return message;
     }
@@ -100,14 +118,14 @@ contract TicketCtrl is ERC721, Ownable {
     // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา
     // ค่าที่ Return จะเป็น tuple โดยที่ ค่าแรก จะบอกว่ามีตั๋วที่มีข้อมูลตรงกับที่กรอกอยู่ในระบบ
     // ส่วนอีกค่า จะเป็นเลข ID ของตั๋ว
-    function getIDByNameAndDetail(string memory t_name,string memory t_detail) public view returns(bool tkExist,uint ticketID_Number) {
+    function getIDByNameAndDetail(string memory t_name,string memory s_detail,string memory date_detail) public view returns(bool tkExist,uint ticketID_Number) {
 
         for(uint i = 0; i <= _tokenIdTracker.current(); i++){
             ticketData storage tkData = tk_dat[i];
-            bool a = (keccak256(abi.encodePacked(tkData.ticketName)) == keccak256(abi.encodePacked(t_name)));     //name & detail compare
-            bool b = (keccak256(abi.encodePacked(tkData.ticketDetail)) == keccak256(abi.encodePacked(t_detail))); //Comparing string but we can't compare them directly
-            
-            if ( a && b )           // if ticket that has these detail exist
+            bool a = (keccak256(abi.encodePacked(tkData.concertName)) == keccak256(abi.encodePacked(t_name)));     //name & detail compare
+            bool b = (keccak256(abi.encodePacked(tkData.ticketSeat)) == keccak256(abi.encodePacked(s_detail))); //Comparing string but we can't compare them directly
+            bool c = (keccak256(abi.encodePacked(tkData.eventDate)) == keccak256(abi.encodePacked(date_detail)));
+            if ( a && b && c )           // if ticket that has these detail exist
             {                       // return ticket ID and said it exist
                 return (true,i);    // solidity can't return multiple value type in 1 variales so It need to return boolean and ID  
             }

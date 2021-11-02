@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other
 
 
-//--------------------------------CONTRACT VERSION 0.3.1------------------------------------------------------//
+//-------------------------------CONTRACT VERSION 0.3.2------------------------------------------------------//
 //-------------------------------เปลี่ยนโครงสร้าง Str------------------------------------------------------------//
 contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
@@ -131,6 +131,11 @@ contract TicketCtrl is ERC721, Ownable {
             }
         }
         return (false,0);           // return 0 and said it not exist (false)
+    }
+
+    //ฟังก์ชั่นที่ใช้ในการโอนตั๋ว โดยผู้ถือตั๋วเดิมต้องเป็นคนทำเท่านั้น
+    function transferTicket(address to_addr,uint t_id) public {
+        super.transferFrom(msg.sender,to_addr,t_id);
     }
 
     // -------------------------------------EXTEND FUNCTION ZONE----------------------------------------//

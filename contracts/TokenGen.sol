@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.1;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 
 // Module that may import in Future
 
 //import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";          //การลบตั๋วทิ้ง
-//import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other
+//import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other (ไม่จำเป็นต้องใช้ในตอนนี้)
 
 
-//-------------------------------CONTRACT VERSION 0.3.2------------------------------------------------------//
-//-------------------------------เปลี่ยนโครงสร้าง Str------------------------------------------------------------//
+//-------------------------------CONTRACT VERSION 0.3.4 BETA-------------------------------------------------------//
+//-------------------------------เปลี่ยนโครงสร้าง Structure------------------------------------------------------------//
 contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdTracker;
@@ -24,9 +25,11 @@ contract TicketCtrl is ERC721, Ownable {
         string concertName;             // ชื่อตั๋ว
         string ticketSeat;              // รายละเอียดตั๋ว ที่นั่ง
         string eventDate;               // รายละเอียดตั๋ว เก็บค่าวันที่ , ยังมี ข้อบกพร่อง อยู่
+        uint valid_date;                // รายละเอียดตั๋ว เก็บค่าวันที่ แบบ unix
         address ticketMaker;            // address คนสร้าง
         uint price;                     // ราคาตั๋ว
         bool isUsed;                    // สถานะการใช้งานตั๋ว
+        uint usedWhen;                  // สถานะการใช้งานตั๋ว เวลาที่ใช้งาน แบบ unix
     }
 
     // ผูกข้อมูลเข้ากับ ตั๋วแต่ละใบ (เรียกใช้โดย เลข ID ตั๋ว)
@@ -39,7 +42,7 @@ contract TicketCtrl is ERC721, Ownable {
         string memory t_date,
         uint t_price) 
         public onlyOwner 
-        returns (uint t_no) {
+        returns (uint t_ID_NO) {
         
         (bool tk_exist,) = getIDByNameAndDetail(name, seat_dt,t_date);      //check if ticket has already made
         if (tk_exist) {
@@ -113,6 +116,18 @@ contract TicketCtrl is ERC721, Ownable {
         tkData.price = re_price;
         string memory message = "update success \nPrice has been Updated";
         return message;
+    }
+
+    function editEventDate(uint tokenId,uint new_day,uint new_month,uint new_year,uint new_hour,uint new_minute) public onlyOwner{
+        ticketData storage tkData = tk_dat[tokenId];
+        tkData.valid_date = DateTime.timestampFromDateTime(new_year, new_month, new_day, new_hour, new_minute, 0);
+    }
+
+    function pumpTimeStamp(uint tokenId) public {
+        require(msg.sender == owner());           
+        ticketData storage tkData = tk_dat[tokenId];            //ประทับเวลาที่ใช้งาน stamp
+        tkData.usedWhen = block.timestamp;
+        tkData.isUsed = false;        
     }
 
     // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา

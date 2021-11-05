@@ -127,7 +127,7 @@ contract TicketCtrl is ERC721, Ownable {
         require(msg.sender == owner());           
         ticketData storage tkData = tk_dat[tokenId];            //ประทับเวลาที่ใช้งาน stamp
         tkData.usedWhen = block.timestamp;
-        tkData.isUsed = false;        
+        tkData.isUsed = true;        
     }
 
     // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา

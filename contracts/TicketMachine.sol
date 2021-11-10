@@ -1,29 +1,45 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
 import "./TokenGen.sol";
 
 contract TicketMachine{
-     TicketCtrl token;
-     //address maker = accounts[0];
-     // ค่าตั๋วชั่วคราว สำหรับทดสอบ
+     TicketCtrl ticket;
      uint tkprice = 4 ether;
 
      function extra() public {
-        token = new TicketCtrl();
+        ticket = new TicketCtrl();
      }
 
-    function getSummary(uint _ticketid) public view returns(string memory) {
-        //return tkprice = token.getPrice(_ticketid);
+    function getTicketID(string memory t_name,string memory s_detail,string memory date_detail) public view returns(string memory) {
+      return ticket.getIDByNameAndDetail(memory t_name, memory s_detail, memory date_detail);
     }
 
-    function buyTicket(uint _ticketid, address _maker) public payable {
-        //เช็ค Ether ของ User ว่าโอนมาพอหรือไม่ ถ้าพอทำการโอน Ticket
+    function transferTK(address to_addr,uint t_id) {
+      // User โอนสิทธิ์ความเป็นเจ้าของตั๋ว
+      return ticket.transferTicket(to_addr, t_id);
+    }
+
+    function getTKprice(string memory t_name,string memory s_detail,string memory date_detail) public view returns(string memory) {
+      // สรุปราคาของตั๋ว
+       _ticketid = getTicketID(memory t_name, memory s_detail, memory date_detail);
+       return ticket.getPrice(_ticketid);
+    }
+
+    function buyTicket(uint _ticketid, address payable _maker) public payable returns(address) {
+        // ตรวจสอบยอดการชำระเงิน และทำการโอนสิทธิ์ตั๋วให้กับ  User
         if (msg.value < tkprice) {
             revert("Not enough Ether!");
         }
         else {
-            token.transferFrom(_maker, msg.sender, _ticketid);
+            return ticket.transferFrom(_maker, buyer, _ticketid);
         }
+    }
+
+    function requestRefund() {
+          // User ทำการขอเงินคืนจากระบบ
+        }
+
+    function checkOwnership() {
+        // ตรวจสอบสิทธิ์ความเป็นเจ้าของตั๋ว โดยใช้ Transaction hash
     }
 }

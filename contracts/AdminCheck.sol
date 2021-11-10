@@ -2,18 +2,18 @@
 pragma solidity ^0.8.2;
 
 import "./TokenGen.sol";
-import "./TicketMachine.sol";
+
 
 contract AdminCheck{
     TicketCtrl ticket;
 
      function checkStatus(uint _ticketid) public view returns(string memory) {
-        ticket.getUsedStatus(_ticketid);
-        if ( tkData.isUsed == true) {
+        bool status = ticket.getUsedStatus(_ticketid);
+        if ( status == true) {
             string memory message = "This ticket is valid.";
             return message;
         }
-        else if ( tkData.isUsed == false) {
+        else if ( status == false) {
             string memory message = "This ticket already used";
             return message;
         }
@@ -27,7 +27,7 @@ contract AdminCheck{
 
     // }
 
-    function getAudienceInfo(uint _ticketid) public view returns(string memory) {
+    function getAudienceInfo(uint _ticketid) public view returns(string memory seat,string memory event_datey) {
       return ticket.getDetail(_ticketid);
     }
 }

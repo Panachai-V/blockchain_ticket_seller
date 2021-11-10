@@ -12,7 +12,7 @@ import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other (ไม่จำเป็นต้องใช้ในตอนนี้)
 
 
-//-------------------------------CONTRACT VERSION 0.3.4 BETA-------------------------------------------------------//
+//-------------------------------CONTRACT VERSION 0.3.5 BETA-------------------------------------------------------//
 //-------------------------------เปลี่ยนโครงสร้าง Structure------------------------------------------------------------//
 contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
@@ -125,10 +125,17 @@ contract TicketCtrl is ERC721, Ownable {
 
     function pumpTimeStamp(uint tokenId) public {
         require(msg.sender == owner());           
-        ticketData storage tkData = tk_dat[tokenId];            //ประทับเวลาที่ใช้งาน stamp
+        ticketData storage tkData = tk_dat[tokenId];        // ประทับเวลาที่ใช้งาน stamp
         tkData.usedWhen = block.timestamp;
-        tkData.isUsed = true;        
+        tkData.isUsed = true;                               // เปลี่ยนสถานะตั๋วเป็น "ใช้แล้ว"
     }
+
+    function revertUsedStatus(uint tokenId) public {        // แก้ไขสถานะตั๋วกลับเป็น "ไม่ได้ใช้"
+        require(msg.sender == owner());           
+        ticketData storage tkData = tk_dat[tokenId];            
+        tkData.isUsed = false;        
+    }
+
 
     // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา
     // ค่าที่ Return จะเป็น tuple โดยที่ ค่าแรก จะบอกว่ามีตั๋วที่มีข้อมูลตรงกับที่กรอกอยู่ในระบบ

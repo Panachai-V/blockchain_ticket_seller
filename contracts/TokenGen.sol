@@ -12,7 +12,18 @@ import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other (ไม่จำเป็นต้องใช้ในตอนนี้)
 
 
-//-------------------------------CONTRACT VERSION 0.3.5 BETA-------------------------------------------------------//
+//-------------------------------CONTRACT VERSION 0.3.7 UNSTABLE-------------------------------------------------------//
+/*      จุดที่มีการเปลี่ยนแปลง
+เปลี่ยนการเก็บค่า วันเวลาเป็นแบบ unix (ค่า integer 1 ตัว) เนื่องจาก solidity จะใช้การอ่านเวลาแบบนี้
+(เก็บเป็น String แบบเดิม solidity เรียกใช้ยากกว่า)
+
+1. ตอนสร้างตั๋ว   ให้กรอกข้อมูลตามนี้ => address ,ชื่อ, เลขตำแหน่งที่นั่ง,ราคา,วันที่จัดงาน,เดือนที่จัด,ปีที่จัด,ชั่วโมง,นาที
+2. function getDetail จะมีสามแบบย่อย   
+    2.1 getDetail(tkID) จะส่งค่าออกมาสองค่าคือ :return (str เลขตำแหน่งที่นั่ง,uint เวลาแบบ unix)
+    2.2 getDateDetail(tkID) จะเป็นวันเวลาที่จัดงานแบบที่คนอ่านได้ จะส่งค่า uint ออกมา 5 ค่าคือ (วัน,เดือน,ปี,ชั่วโมง,นาที)
+    2.2 getDateUnix(tkID) จะเป็นวันเวลาที่จัดงานแบบ unix :return (uint เวลาแบบ unix)
+*/
+
 //-------------------------------เปลี่ยนโครงสร้าง Structure------------------------------------------------------------//
 contract TicketCtrl is ERC721, Ownable {
     using Counters for Counters.Counter;
@@ -24,8 +35,8 @@ contract TicketCtrl is ERC721, Ownable {
      struct ticketData {
         string concertName;             // ชื่อตั๋ว
         string ticketSeat;              // รายละเอียดตั๋ว ที่นั่ง
-        string eventDate;               // รายละเอียดตั๋ว เก็บค่าวันที่ , ยังมี ข้อบกพร่อง อยู่
-        uint valid_date;                // รายละเอียดตั๋ว เก็บค่าวันที่ แบบ unix
+        //string eventDate;               // รายละเอียดตั๋ว เก็บค่าวันที่ , ยกเลิกการใช้งาน
+        uint valid_event_date;            // รายละเอียดตั๋ว เก็บค่าวันที่ แบบ unix
         address ticketMaker;            // address คนสร้าง
         uint price;                     // ราคาตั๋ว
         bool isUsed;                    // สถานะการใช้งานตั๋ว
@@ -39,12 +50,18 @@ contract TicketCtrl is ERC721, Ownable {
         address _to,
         string memory name,
         string memory seat_dt,
-        string memory t_date,
-        uint t_price) 
+        // string memory t_date,
+        uint t_price,
+        uint e_day,
+        uint e_month,
+        uint e_year,
+        uint e_hour,
+        uint e_minute) 
         public onlyOwner 
         returns (uint t_ID_NO) {
         
-        (bool tk_exist,) = getIDByNameAndDetail(name, seat_dt,t_date);      //check if ticket has already made
+        uint linux_time = DateTime.timestampFromDateTime(e_year, e_month, e_day, e_hour, e_minute, 0);
+        (bool tk_exist,) = getIDByNameAndDetail(name, seat_dt,linux_time);      //check if ticket has already made
         if (tk_exist) {
             revert("This ticket has already made");
         }
@@ -55,21 +72,16 @@ contract TicketCtrl is ERC721, Ownable {
         tkData.concertName = name;
         tkData.ticketMaker = msg.sender;
         tkData.price = t_price;
-        tkData.eventDate = t_date;
+        // tkData.eventDate = t_date; 
+        tkData.valid_event_date = linux_time;
         tkData.isUsed = false;
         _tokenIdTracker.increment();
         return now_ID;
     }
 
-    
-
-    // โอนตั๋วโดยใช้ address คนขาย (ยกเลิกครับ)
-    /* function transferFrom(address from,address to, uint256 tokenId) public virtual override onlyOwner{
-        super.transferFrom(from, to ,tokenId);
-        ticketData storage tkData = tk_dat[tokenId];
-    } */
-
+    // การโอนตั๋วโดยใช้ address คนขาย ใช้ function transferFrom(address from,address to, uint256 tokenId) 
     // Function get ค่าต่างๆในตั๋ว (ป้อน ID ตั๋ว)
+    // get ค่า address เจ้าของตั๋ว ให้ใช้ ownerOf(uint tokenId) แทน
 
     function getPrice(uint tokenId) public view returns(uint price_num) {
         ticketData storage tkData = tk_dat[tokenId];
@@ -81,9 +93,22 @@ contract TicketCtrl is ERC721, Ownable {
         return tkData.concertName;
     }
 
-    function getDetail(uint tokenId) public view returns(string memory seat,string memory event_date) {
+    function getDetail(uint tokenId) public view returns(
+        string memory seat,
+        uint unix_time) {
         ticketData storage tkData = tk_dat[tokenId];
-        return (tkData.ticketSeat,tkData.eventDate);
+        return (tkData.ticketSeat,tkData.valid_event_date);
+    }
+
+    function getDateDetail(uint tokenId) public view returns(
+        uint event_day,
+        uint event_month,
+        uint event_year,
+        uint event_hour,
+        uint event_minute) {
+        ticketData storage tkData = tk_dat[tokenId];
+        (uint eventYear,uint eventMonth,uint eventDay,uint eventHour,uint eventSecond,) = DateTime.timestampToDateTime(tkData.valid_event_date);
+        return (eventDay,eventMonth,eventYear,eventHour,eventSecond);
     }
 
     function getUsedStatus(uint tokenId) public view returns(bool) {
@@ -91,18 +116,18 @@ contract TicketCtrl is ERC721, Ownable {
         return tkData.isUsed;
     }
 
-    // ยกเลิก Function นี้ ให้ใช้ ownerOf(uint tokenId) แทน
-    // function getOwnerAddress(uint tokenId) public view returns(address) {
-    //     ticketData storage tkData = tk_dat[tokenId];
-    //     return tkData.ticketOwner;
-    // } 
+    function getDateUNIX(uint tokenId)  public view returns(uint) {
+        ticketData storage tkData = tk_dat[tokenId];
+        return tkData.valid_event_date;
+    }
 
     function getMakerAddress(uint tokenId) public view returns(address) {
         ticketData storage tkData = tk_dat[tokenId];
         return tkData.ticketMaker;
     }
 
-    // แก้ไขตั๋ว
+    // แก้ไขข้อมูลบนตั๋ว
+
     function editTicket(uint tokenId,string memory rename,string memory re_detail) public onlyOwner returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
         tkData.concertName = rename;
@@ -120,7 +145,7 @@ contract TicketCtrl is ERC721, Ownable {
 
     function editEventDate(uint tokenId,uint new_day,uint new_month,uint new_year,uint new_hour,uint new_minute) public onlyOwner{
         ticketData storage tkData = tk_dat[tokenId];
-        tkData.valid_date = DateTime.timestampFromDateTime(new_year, new_month, new_day, new_hour, new_minute, 0);
+        tkData.valid_event_date = DateTime.timestampFromDateTime(new_year, new_month, new_day, new_hour, new_minute, 0);
     }
 
     function pumpTimeStamp(uint tokenId) public {
@@ -140,13 +165,13 @@ contract TicketCtrl is ERC721, Ownable {
     // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา
     // ค่าที่ Return จะเป็น tuple โดยที่ ค่าแรก จะบอกว่ามีตั๋วที่มีข้อมูลตรงกับที่กรอกอยู่ในระบบ
     // ส่วนอีกค่า จะเป็นเลข ID ของตั๋ว
-    function getIDByNameAndDetail(string memory t_name,string memory s_detail,string memory date_detail) public view returns(bool tkExist,uint ticketID_Number) {
+    function getIDByNameAndDetail(string memory t_name,string memory s_detail,uint date_unix) public view returns(bool tkExist,uint ticketID_Number) {
 
         for(uint i = 0; i <= _tokenIdTracker.current(); i++){
             ticketData storage tkData = tk_dat[i];
             bool a = (keccak256(abi.encodePacked(tkData.concertName)) == keccak256(abi.encodePacked(t_name)));     //name & detail compare
             bool b = (keccak256(abi.encodePacked(tkData.ticketSeat)) == keccak256(abi.encodePacked(s_detail))); //Comparing string but we can't compare them directly
-            bool c = (keccak256(abi.encodePacked(tkData.eventDate)) == keccak256(abi.encodePacked(date_detail)));
+            bool c = (tkData.valid_event_date == date_unix);
             if ( a && b && c )           // if ticket that has these detail exist
             {                       // return ticket ID and said it exist
                 return (true,i);    // solidity can't return multiple value type in 1 variales so It need to return boolean and ID  
@@ -161,6 +186,7 @@ contract TicketCtrl is ERC721, Ownable {
     }
 
     // -------------------------------------EXTEND FUNCTION ZONE----------------------------------------//
+    // -------------------------------------ฟังก์ชั่นเพิ่มเติม (เสริม)----------------------------------------//
     function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
         if (_i == 0) {
             return "0";

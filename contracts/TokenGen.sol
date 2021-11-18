@@ -18,10 +18,12 @@ import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 (เก็บเป็น String แบบเดิม solidity เรียกใช้ยากกว่า)
 
 1. ตอนสร้างตั๋ว   ให้กรอกข้อมูลตามนี้ => address ,ชื่อ, เลขตำแหน่งที่นั่ง,ราคา,วันที่จัดงาน,เดือนที่จัด,ปีที่จัด,ชั่วโมง,นาที
-2. function getDetail จะมีสามแบบย่อย   
+2. function getDetail จะมี 4 แบบย่อย   
     2.1 getDetail(tkID) จะส่งค่าออกมาสองค่าคือ :return (str เลขตำแหน่งที่นั่ง,uint เวลาแบบ unix)
+    อยากให้เลิกใช้ถ้าเป็นไปได้เพราะแทนที่ด้วย 3 อันล่างได้
     2.2 getDateDetail(tkID) จะเป็นวันเวลาที่จัดงานแบบที่คนอ่านได้ จะส่งค่า uint ออกมา 5 ค่าคือ (วัน,เดือน,ปี,ชั่วโมง,นาที)
     2.2 getDateUnix(tkID) จะเป็นวันเวลาที่จัดงานแบบ unix :return (uint เวลาแบบ unix)
+    2.4 getSeatDetail(tkID) จะส่งค่าออกมาสองค่าคือ :return (str เลขตำแหน่งที่นั่ง,uint เวลาแบบ unix)
 */
 
 //-------------------------------เปลี่ยนโครงสร้าง Structure------------------------------------------------------------//
@@ -83,47 +85,69 @@ contract TicketCtrl is ERC721, Ownable {
     // Function get ค่าต่างๆในตั๋ว (ป้อน ID ตั๋ว)
     // get ค่า address เจ้าของตั๋ว ให้ใช้ ownerOf(uint tokenId) แทน
 
-    function getPrice(uint tokenId) public view returns(uint price_num) {
-        ticketData storage tkData = tk_dat[tokenId];
+    function getPrice(uint ticketId) public view returns(uint price_num) {
+        ticketData storage tkData = tk_dat[ticketId];
         return tkData.price;
     }
 
-    function getName(uint tokenId) public view returns(string memory) {
-        ticketData storage tkData = tk_dat[tokenId];
+    function getName(uint ticketId) public view returns(string memory) {
+        ticketData storage tkData = tk_dat[ticketId];
         return tkData.concertName;
     }
 
-    function getDetail(uint tokenId) public view returns(
-        string memory seat,
-        uint unix_time) {
-        ticketData storage tkData = tk_dat[tokenId];
-        return (tkData.ticketSeat,tkData.valid_event_date);
+    function getDetail(uint ticketId) public view returns(string memory seat,uint unix_date) {
+        ticketData storage tkData = tk_dat[ticketId];
+        return (tkData.ticketSeat,tkData.valid_event_date);     
     }
 
-    function getDateDetail(uint tokenId) public view returns(
+    function getSeatDetail(uint ticketId) public view returns(string memory seat) {
+        ticketData storage tkData = tk_dat[ticketId];
+        return tkData.ticketSeat;     
+    }
+
+    function getDateDetail(uint ticketId) public view returns(
         uint event_day,
         uint event_month,
         uint event_year,
         uint event_hour,
         uint event_minute) {
-        ticketData storage tkData = tk_dat[tokenId];
-        (uint eventYear,uint eventMonth,uint eventDay,uint eventHour,uint eventSecond,) = DateTime.timestampToDateTime(tkData.valid_event_date);
+        ticketData storage tkData = tk_dat[ticketId];
+        (uint eventYear,uint eventMonth,uint eventDay,uint eventHour,uint eventSecond,) = 
+        DateTime.timestampToDateTime(tkData.valid_event_date);
         return (eventDay,eventMonth,eventYear,eventHour,eventSecond);
     }
 
-    function getUsedStatus(uint tokenId) public view returns(bool) {
-        ticketData storage tkData = tk_dat[tokenId];
+    function getDateUNIX(uint ticketId)  public view returns(uint) {
+        ticketData storage tkData = tk_dat[ticketId];
+        return tkData.valid_event_date;                         //เวลาที่ return ออกมา เป็น unix timestamp
+    }
+
+    function getUsedStatus(uint ticketId) public view returns(bool) {
+        ticketData storage tkData = tk_dat[ticketId];
         return tkData.isUsed;
     }
 
-    function getDateUNIX(uint tokenId)  public view returns(uint) {
-        ticketData storage tkData = tk_dat[tokenId];
-        return tkData.valid_event_date;
+    function getMakerAddress(uint ticketId) public view returns(address) {
+        ticketData storage tkData = tk_dat[ticketId];
+        return tkData.ticketMaker;
     }
 
-    function getMakerAddress(uint tokenId) public view returns(address) {
-        ticketData storage tkData = tk_dat[tokenId];
-        return tkData.ticketMaker;
+    // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา
+    // ค่าที่ Return จะเป็น tuple โดยที่ ค่าแรก จะบอกว่ามีตั๋วที่มีข้อมูลตรงกับที่กรอกอยู่ในระบบ
+    // ส่วนอีกค่า จะเป็นเลข ID ของตั๋ว
+    function getIDByNameAndDetail(string memory t_name,string memory s_detail,uint date_unix) public view returns(bool tkExist,uint ticketID_Number) {
+
+        for(uint i = 0; i <= _tokenIdTracker.current(); i++){
+            ticketData storage tkData = tk_dat[i];
+            bool a = (keccak256(abi.encodePacked(tkData.concertName)) == keccak256(abi.encodePacked(t_name)));     //name & detail compare
+            bool b = (keccak256(abi.encodePacked(tkData.ticketSeat)) == keccak256(abi.encodePacked(s_detail))); //Comparing string but we can't compare them directly
+            bool c = (tkData.valid_event_date == date_unix);
+            if ( a && b && c )           // if ticket that has these detail exist
+            {                       // return ticket ID and said it exist
+                return (true,i);    // solidity can't return multiple value type in 1 variales so It need to return boolean and ID  
+            }
+        }
+        return (false,0);           // return 0 and said it not exist (false)
     }
 
     // แก้ไขข้อมูลบนตั๋ว
@@ -159,25 +183,6 @@ contract TicketCtrl is ERC721, Ownable {
         require(msg.sender == owner());           
         ticketData storage tkData = tk_dat[tokenId];            
         tkData.isUsed = false;        
-    }
-
-
-    // ป้อนค่า name กับ detail ของตั๋ว เพื่อ Return ID ออกมา
-    // ค่าที่ Return จะเป็น tuple โดยที่ ค่าแรก จะบอกว่ามีตั๋วที่มีข้อมูลตรงกับที่กรอกอยู่ในระบบ
-    // ส่วนอีกค่า จะเป็นเลข ID ของตั๋ว
-    function getIDByNameAndDetail(string memory t_name,string memory s_detail,uint date_unix) public view returns(bool tkExist,uint ticketID_Number) {
-
-        for(uint i = 0; i <= _tokenIdTracker.current(); i++){
-            ticketData storage tkData = tk_dat[i];
-            bool a = (keccak256(abi.encodePacked(tkData.concertName)) == keccak256(abi.encodePacked(t_name)));     //name & detail compare
-            bool b = (keccak256(abi.encodePacked(tkData.ticketSeat)) == keccak256(abi.encodePacked(s_detail))); //Comparing string but we can't compare them directly
-            bool c = (tkData.valid_event_date == date_unix);
-            if ( a && b && c )           // if ticket that has these detail exist
-            {                       // return ticket ID and said it exist
-                return (true,i);    // solidity can't return multiple value type in 1 variales so It need to return boolean and ID  
-            }
-        }
-        return (false,0);           // return 0 and said it not exist (false)
     }
 
     //ฟังก์ชั่นที่ใช้ในการโอนตั๋ว โดยผู้ถือตั๋วเดิมต้องเป็นคนทำเท่านั้น

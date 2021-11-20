@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
-import "./TokenGen.sol";
+import "./tokenGen.sol";
 
 
 contract AdminCheck{
-    TicketCtrl ticket;
+   // TicketCtrl ticket;
 
+ 
      function checkStatus(uint _ticketid) public view returns(string memory) {
+        TicketCtrl ticket;
         bool status = ticket.getUsedStatus(_ticketid);
         if ( status == true) {
             string memory message = "This ticket is valid.";
@@ -23,11 +25,14 @@ contract AdminCheck{
         }
      }
 
-    // function changeStatus(uint _ticketid) public view returns(string memory) {
-
-    // }
-
-    function getAudienceInfo(uint _ticketid) public view returns(string memory seat,string memory event_datey) {
-      return ticket.getDetail(_ticketid);
+    function doActivateTicket(address _addr,uint _ticketid) public payable {
+     TicketCtrl t = TicketCtrl(_addr);
+     t.pumpTimeStamp(_ticketid);
     }
+    
+    function undoActivateTicket(address _addr,uint _ticketid) public payable {
+     TicketCtrl t = TicketCtrl(_addr);
+     t.revertUsedStatus(_ticketid);
+    }
+    
 }

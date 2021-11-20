@@ -12,7 +12,7 @@ import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 //import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other (ไม่จำเป็นต้องใช้ในตอนนี้)
 
 
-//-------------------------------CONTRACT VERSION 0.3.7 UNSTABLE-------------------------------------------------------//
+//-------------------------------CONTRACT VERSION 0.3.8 UNSTABLE-------------------------------------------------------//
 /*      จุดที่มีการเปลี่ยนแปลง
 เปลี่ยนการเก็บค่า วันเวลาเป็นแบบ unix (ค่า integer 1 ตัว) เนื่องจาก solidity จะใช้การอ่านเวลาแบบนี้
 (เก็บเป็น String แบบเดิม solidity เรียกใช้ยากกว่า)
@@ -24,6 +24,7 @@ import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
     2.2 getDateDetail(tkID) จะเป็นวันเวลาที่จัดงานแบบที่คนอ่านได้ จะส่งค่า uint ออกมา 5 ค่าคือ (วัน,เดือน,ปี,ชั่วโมง,นาที)
     2.2 getDateUnix(tkID) จะเป็นวันเวลาที่จัดงานแบบ unix :return (uint เวลาแบบ unix)
     2.4 getSeatDetail(tkID) จะส่งค่าออกมาสองค่าคือ :return (str เลขตำแหน่งที่นั่ง,uint เวลาแบบ unix)
+3. มีตัวเช็คการกรอกเลขเวลา
 */
 
 //-------------------------------เปลี่ยนโครงสร้าง Structure------------------------------------------------------------//
@@ -36,11 +37,11 @@ contract TicketCtrl is ERC721, Ownable {
     //ตัวแปรสำหรับเก็บข้อมูลของตั๋ว 
      struct ticketData {
         string concertName;             // ชื่อตั๋ว
-        string ticketSeat;              // รายละเอียดตั๋ว ที่นั่ง
-        //string eventDate;               // รายละเอียดตั๋ว เก็บค่าวันที่ , ยกเลิกการใช้งาน
-        uint valid_event_date;            // รายละเอียดตั๋ว เก็บค่าวันที่ แบบ unix
-        address ticketMaker;            // address คนสร้าง
+        string ticketSeat;              // ที่นั่งหรือเลขที่นั่ง
+        uint valid_event_date;          // วันที่จัดงาน เก็บค่าวันที่ แบบ unix
+        string event_where;             // สถานที่จัดงาน
         uint price;                     // ราคาตั๋ว
+        address ticketMaker;            // address คนสร้าง
         bool isUsed;                    // สถานะการใช้งานตั๋ว
         uint usedWhen;                  // สถานะการใช้งานตั๋ว เวลาที่ใช้งาน แบบ unix
     }
@@ -52,7 +53,6 @@ contract TicketCtrl is ERC721, Ownable {
         address _to,
         string memory name,
         string memory seat_dt,
-        // string memory t_date,
         uint t_price,
         uint e_day,
         uint e_month,
@@ -61,7 +61,11 @@ contract TicketCtrl is ERC721, Ownable {
         uint e_minute) 
         public onlyOwner 
         returns (uint t_ID_NO) {
-        
+
+        if (timeIsError(e_day, e_month, e_year,e_hour , e_minute)) {
+            revert("Datetime value is wrong or not support, Please change value");
+        }
+
         uint linux_time = DateTime.timestampFromDateTime(e_year, e_month, e_day, e_hour, e_minute, 0);
         (bool tk_exist,) = getIDByNameAndDetail(name, seat_dt,linux_time);      //check if ticket has already made
         if (tk_exist) {
@@ -172,15 +176,13 @@ contract TicketCtrl is ERC721, Ownable {
         tkData.valid_event_date = DateTime.timestampFromDateTime(new_year, new_month, new_day, new_hour, new_minute, 0);
     }
 
-    function pumpTimeStamp(uint tokenId) public {
-        require(msg.sender == owner());           
+    function pumpTimeStamp(uint tokenId) public {           
         ticketData storage tkData = tk_dat[tokenId];        // ประทับเวลาที่ใช้งาน stamp
         tkData.usedWhen = block.timestamp;
         tkData.isUsed = true;                               // เปลี่ยนสถานะตั๋วเป็น "ใช้แล้ว"
     }
 
-    function revertUsedStatus(uint tokenId) public {        // แก้ไขสถานะตั๋วกลับเป็น "ไม่ได้ใช้"
-        require(msg.sender == owner());           
+    function revertUsedStatus(uint tokenId) public {        // แก้ไขสถานะตั๋วกลับเป็น "ไม่ได้ใช้"           
         ticketData storage tkData = tk_dat[tokenId];            
         tkData.isUsed = false;        
     }
@@ -190,6 +192,20 @@ contract TicketCtrl is ERC721, Ownable {
         super.transferFrom(msg.sender,to_addr,t_id);
     }
 
+
+    function timeIsError(uint day_i,uint mth_i,uint yr_i,uint hr_i,uint m_i ) private pure returns(bool){
+        bool dayNot_error = ((day_i >= 1) && (day_i < 32));
+        bool monthNot_error = ((mth_i >= 1) && (mth_i <= 12));
+        bool yearNot_error = ((yr_i >= 1970) && (yr_i < 2038));
+        bool hourNot_error = (hr_i <= 24);
+        bool minuteNot_error = (m_i <= 60);
+        if ( dayNot_error && monthNot_error && yearNot_error && hourNot_error && minuteNot_error){
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
     // -------------------------------------EXTEND FUNCTION ZONE----------------------------------------//
     // -------------------------------------ฟังก์ชั่นเพิ่มเติม (เสริม)----------------------------------------//
     function uint2str(uint _i) internal pure returns (string memory _uintAsString) {

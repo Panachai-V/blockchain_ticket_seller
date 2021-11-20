@@ -36,5 +36,9 @@ contract AdminCheck{
      TicketCtrl t = TicketCtrl(_addr);
      t.revertUsedStatus(_ticketid);
     }
-    
+    //แสดงข้อมูลผู้เข้าร่วมงาน
+    function getAudienceDetail(address _addr,uint _ticketid) public view returns(string memory seat,uint unix_date) {
+     TicketCtrl t = TicketCtrl(_addr);
+     return t.getDetail(_ticketid);
+    }
 }

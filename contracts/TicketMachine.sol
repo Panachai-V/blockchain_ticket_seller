@@ -26,7 +26,7 @@ contract TicketMachine{
         ticket = new TicketCtrl();
      }
 
-     function withdraw() public onlyBuyer {
+     function withdraw() public onlySeller {
        // คนขายถอนเงินจากระบบ
        buyer.transfer(address(this).balance);
      }
@@ -35,7 +35,7 @@ contract TicketMachine{
       return ticket.getIDByNameAndDetail(t_name, s_detail, date_detail);
     }
 
-    function transferTK(address to_addr,uint t_id) public onlyBuyer returns {
+    function transferTK(address to_addr,uint t_id) public onlyBuyer returns(address) {
       // User โอนสิทธิ์ความเป็นเจ้าของตั๋ว
       return ticket.transferTicket(to_addr, t_id);
     }

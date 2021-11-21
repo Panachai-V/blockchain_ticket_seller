@@ -6,13 +6,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 
-// Module that may import in Future
-
-//import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";          //การลบตั๋วทิ้ง
-//import "@openzeppelin/contracts/access/AccessControl.sol";                            //การประกาศ Roll ต่างๆ เช่น ADMIN, Buyer, Other (ไม่จำเป็นต้องใช้ในตอนนี้)
-
-
-//-------------------------------CONTRACT VERSION 0.3.8 UNSTABLE-------------------------------------------------------//
+//-------------------------------CONTRACT VERSION 0.4.0 ------------------------------------------------------------//
 /*      จุดที่มีการเปลี่ยนแปลง
 เปลี่ยนการเก็บค่า วันเวลาเป็นแบบ unix (ค่า integer 1 ตัว) เนื่องจาก solidity จะใช้การอ่านเวลาแบบนี้
 (เก็บเป็น String แบบเดิม solidity เรียกใช้ยากกว่า)
@@ -154,10 +148,21 @@ contract TicketCtrl is ERC721, Ownable {
         return (false,0);           // return 0 and said it not exist (false)
     }
 
+    function getIDbyName_HumanDate(string memory t_name,string memory s_detail,uint d,uint mth,uint yrs,uint hr,uint mins) 
+    public view returns(bool tkExist,uint ticketID_Number) {
+        uint date_unix = DateTime.timestampFromDateTime(yrs, mth, d, hr, mins, 0);
+        return getIDByNameAndDetail(t_name, s_detail, date_unix);
+    }
+
+
     // แก้ไขข้อมูลบนตั๋ว
 
     function editTicket(uint tokenId,string memory rename,string memory re_detail) public onlyOwner returns(string memory) {
         ticketData storage tkData = tk_dat[tokenId];
+        (bool itExist,uint tkID) = getIDByNameAndDetail(rename,re_detail,tkData.valid_event_date);
+        if (itExist && (tkID != tokenId)){
+            revert("Another ticket has been made cannot editing");
+        }
         tkData.concertName = rename;
         tkData.ticketSeat = re_detail;
         string memory message = "update success \nName & Detail has been Updated";
@@ -173,7 +178,13 @@ contract TicketCtrl is ERC721, Ownable {
 
     function editEventDate(uint tokenId,uint new_day,uint new_month,uint new_year,uint new_hour,uint new_minute) public onlyOwner{
         ticketData storage tkData = tk_dat[tokenId];
-        tkData.valid_event_date = DateTime.timestampFromDateTime(new_year, new_month, new_day, new_hour, new_minute, 0);
+        uint new_timestamp = DateTime.timestampFromDateTime(new_year, new_month, new_day, new_hour, new_minute, 0);
+        (bool itExist,uint tkID) = getIDByNameAndDetail(tkData.concertName,tkData.ticketSeat,new_timestamp);
+        if (itExist && (tkID != tokenId)){
+            revert("Another ticket has been made,Cancel editing");
+        }
+
+        tkData.valid_event_date = new_timestamp;
     }
 
     function pumpTimeStamp(uint tokenId) public {           
